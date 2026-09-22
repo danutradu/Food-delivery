@@ -13,6 +13,7 @@
     <properties>
         <java.version>21</java.version>
         <spring-boot.version>3.5.16</spring-boot.version>
+        <confluent.version>7.7.11</confluent.version>
         <avro.version>1.12.2</avro.version>
         <lombok.version>1.18.48</lombok.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
@@ -38,6 +39,11 @@
         <repository>
             <id>central</id>
             <url>https://repo1.maven.org/maven2/</url>
+        </repository>
+        <repository>
+            <id>confluent</id>
+            <name>Confluent</name>
+            <url>https://packages.confluent.io/maven/</url>
         </repository>
     </repositories>
 
