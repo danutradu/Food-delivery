@@ -1,0 +1,103 @@
+server:
+  port: 8090
+  tomcat:
+    accesslog:
+      enabled: false
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/users_profile
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+      # FOR PROD - Connection & Timeout Settings
+      request.timeout.ms: ${KAFKA_REQUEST_TIMEOUT:30000}
+      retry.backoff.ms: ${KAFKA_RETRY_BACKOFF:100}
+      reconnect.backoff.ms: ${KAFKA_RECONNECT_BACKOFF:50}
+      connections.max.idle.ms: ${KAFKA_CONNECTIONS_MAX_IDLE:540000}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      # FOR PROD - Reliability Settings
+      acks: ${KAFKA_PRODUCER_ACKS:all}
+      retries: ${KAFKA_PRODUCER_RETRIES:2147483647}
+      enable-idempotence: ${KAFKA_PRODUCER_IDEMPOTENCE:true}
+      # FOR PROD - Performance Settings (optimized for food delivery)
+      batch-size: ${KAFKA_PRODUCER_BATCH_SIZE:8192}
+      linger-ms: ${KAFKA_PRODUCER_LINGER_MS:1}
+      compression-type: ${KAFKA_PRODUCER_COMPRESSION:snappy}
+      buffer-memory: ${KAFKA_PRODUCER_BUFFER_MEMORY:33554432}
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        specific.avro.reader: true
+        # FOR PROD - Session management
+        session.timeout.ms: ${KAFKA_CONSUMER_SESSION_TIMEOUT:30000}
+        heartbeat.interval.ms: ${KAFKA_CONSUMER_HEARTBEAT_INTERVAL:3000}
+      # FOR PROD - Reliability Settings
+      auto-offset-reset: ${KAFKA_CONSUMER_OFFSET_RESET:earliest}
+      enable-auto-commit: ${KAFKA_CONSUMER_AUTO_COMMIT:false}
+      # FOR PROD - Performance Settings (optimized for food delivery)
+      max-poll-records: ${KAFKA_CONSUMER_MAX_POLL_RECORDS:100}
+      fetch-min-size: ${KAFKA_CONSUMER_FETCH_MIN_BYTES:1}
+      fetch-max-wait: ${KAFKA_CONSUMER_FETCH_MAX_WAIT:100}
+    listener:
+      missing-topics-fatal: ${KAFKA_LISTENER_MISSING_TOPICS_FATAL:true}
+      # FOR PROD - Listener Settings (optimized for food delivery)
+      ack-mode: manual_immediate
+      concurrency: ${KAFKA_LISTENER_CONCURRENCY:3}
+      poll-timeout: ${KAFKA_LISTENER_POLL_TIMEOUT:1000}
+  mvc:
+    log-request-details: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+#Kafka configuration
+kafka:
+  consumer:
+    group-id: ${KAFKA_CONSUMER_GROUP_ID:user-service}
+  topics:
+    # Topic configuration
+    partitions: ${KAFKA_TOPIC_PARTITIONS:3}
+    replicas: ${KAFKA_TOPIC_REPLICAS:3}
+    # Consumer topics
+    user-registered: ${KAFKA_TOPIC_USER_REGISTERED:fd.user.registered.v1}
+  retry:
+    attempts: ${KAFKA_RETRY_ATTEMPTS:3}
+    delay: ${KAFKA_RETRY_DELAY:1000}
+    multiplier: ${KAFKA_RETRY_MULTIPLIER:2.0}
+    max-delay: ${KAFKA_RETRY_MAX_DELAY:10000}
+
+security:
+  jwt:
+    jwks-uri: ${JWT_JWKS_URI:http://localhost:8082/.well-known/jwks.json}
+
+logging:
+  level:
+    root: INFO
+    com.food.delivery: INFO
+    org.springframework.kafka: INFO
+    org.springframework.kafka.listener: INFO
+    org.apache.kafka: WARN
+    org.hibernate.SQL: INFO
+    org.hibernate.orm.jdbc.bind: INFO
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{rid}] [%t] %logger{36} - %msg%n"
