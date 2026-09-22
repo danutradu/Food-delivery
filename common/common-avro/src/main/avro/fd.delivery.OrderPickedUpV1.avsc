@@ -1,0 +1,9 @@
+{
+  "type":"record","name":"OrderPickedUpV1","namespace":"fd.delivery",
+  "fields":[
+    {"name":"eventId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"occurredAt","type":{"type":"long","logicalType":"timestamp-millis"}},
+    {"name":"orderId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"courierId","type":{"type":"string","logicalType":"uuid"}}
+  ]
+}

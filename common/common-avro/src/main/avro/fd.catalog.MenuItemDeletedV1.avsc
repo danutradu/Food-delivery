@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "MenuItemDeletedV1",
+  "namespace": "fd.catalog",
+  "fields": [
+    {"name":"eventId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"timestamp","type":{"type":"long","logicalType":"timestamp-millis"}},
+    {"name":"restaurantId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"menuItemId","type":{"type":"string","logicalType":"uuid"}}
+  ]
+}

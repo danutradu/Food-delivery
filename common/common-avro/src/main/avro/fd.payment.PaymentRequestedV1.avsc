@@ -1,0 +1,9 @@
+{
+  "type":"record","name":"PaymentRequestedV1","namespace":"fd.payment",
+  "fields":[
+    {"name":"eventId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"occurredAt","type":{"type":"long","logicalType":"timestamp-millis"}},
+    {"name":"orderId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"amount","type":{"type":"bytes","logicalType":"decimal","precision":19,"scale":2}}
+  ]
+}

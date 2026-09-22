@@ -1,0 +1,9 @@
+{
+  "type": "enum",
+  "name": "OrderStatusV1",
+  "namespace": "fd.order",
+  "symbols": [
+    "CREATED","PAYMENT_AUTHORIZED","RESTAURANT_ACCEPTED","COURIER_ASSIGNED",
+    "PICKED_UP","DELIVERED","CANCELLED","PAYMENT_FAILED","RESTAURANT_REJECTED"
+  ]
+}

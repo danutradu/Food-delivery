@@ -1,0 +1,9 @@
+{
+  "type":"record","name":"OrderReadyForPickupV1","namespace":"fd.restaurant",
+  "fields":[
+    {"name":"eventId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"occurredAt","type":{"type":"long","logicalType":"timestamp-millis"}},
+    {"name":"orderId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"restaurantId","type":{"type":"string","logicalType":"uuid"}}
+  ]
+}

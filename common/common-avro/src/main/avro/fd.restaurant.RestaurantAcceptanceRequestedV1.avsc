@@ -1,0 +1,11 @@
+{
+  "type":"record","name":"RestaurantAcceptanceRequestedV1","namespace":"fd.restaurant",
+  "fields":[
+    {"name":"eventId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"occurredAt","type":{"type":"long","logicalType":"timestamp-millis"}},
+    {"name":"orderId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"restaurantId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"customerId","type":{"type":"string","logicalType":"uuid"}},
+    {"name":"total","type":{"type":"bytes","logicalType":"decimal","precision":19,"scale":2}}
+  ]
+}
