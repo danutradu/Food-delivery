@@ -63,4 +63,12 @@ public class DltEventService {
             throw new IllegalStateException("Could not serialize Avro event for DLT recovery", exception);
         }
     }
+
+    @Transactional
+    public void markResolved(UUID id) {
+        repository.findById(id).ifPresent(record -> {
+            record.setStatus(DltEventStatus.RESOLVED);
+            repository.save(record);
+        });
+    }
 }
