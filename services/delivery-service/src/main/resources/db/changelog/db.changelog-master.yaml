@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/db.changelog-common.yaml
+  - changeSet:
+      id: delivery-001-add-ready-for-pickup
+      author: food-delivery
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - tableExists:
+            tableName: deliveries
+        - not:
+            columnExists:
+              tableName: deliveries
+              columnName: ready_for_pickup
+      changes:
+        - addColumn:
+            tableName: deliveries
+            columns:
+              - column:
+                  name: ready_for_pickup
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+  - include:
+      file: db/changelog/db.changelog-delivery.sql
