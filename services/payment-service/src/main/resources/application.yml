@@ -1,12 +1,12 @@
 server:
-  port: 8082
+  port: 8084
   tomcat:
     accesslog:
       enabled: false
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth
+    url: jdbc:postgresql://localhost:5432/payments
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
   jpa:
@@ -63,26 +63,39 @@ spring:
   mvc:
     log-request-details: false
 
+#Kafka configuration
+kafka:
+  consumer:
+    group-id: ${KAFKA_CONSUMER_GROUP_ID:payment-service}
+  topics:
+    # Topic configuration
+    partitions: ${KAFKA_TOPIC_PARTITIONS:3}
+    replicas: ${KAFKA_TOPIC_REPLICAS:3}
+    # Consumer topics
+    payment-requested: ${KAFKA_TOPIC_PAYMENT_REQUESTED:fd.payment.requested.v1}
+    refund-requested: ${KAFKA_TOPIC_REFUND_REQUESTED:fd.payment.refund-requested.v1}
+    fee-requested: ${KAFKA_TOPIC_FEE_REQUESTED:fd.payment.fee-requested.v1}
+    # Producer topics
+    payment-authorized: ${KAFKA_TOPIC_PAYMENT_AUTHORIZED:fd.payment.authorized.v1}
+    payment-failed: ${KAFKA_TOPIC_PAYMENT_FAILED:fd.payment.failed.v1}
+    refund-completed: ${KAFKA_TOPIC_REFUND_COMPLETED:fd.payment.refund-completed.v1}
+    fee-charged: ${KAFKA_TOPIC_FEE_CHARGED:fd.payment.fee-charged.v1}
+    fee-failed: ${KAFKA_TOPIC_FEE_FAILED:fd.payment.fee-failed.v1}
+  retry:
+    attempts: ${KAFKA_RETRY_ATTEMPTS:3}
+    delay: ${KAFKA_RETRY_DELAY:1000}
+    multiplier: ${KAFKA_RETRY_MULTIPLIER:2.0}
+    max-delay: ${KAFKA_RETRY_MAX_DELAY:10000}
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics
 
-jwt:
-  issuer: ${JWT_ISSUER:auth-service}
-  audience: ${JWT_AUDIENCE:food-delivery}
-  expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
-
-#Kafka configuration
-kafka:
-  topics:
-    # Topic configuration
-    partitions: ${KAFKA_TOPIC_PARTITIONS:3}
-    replicas: ${KAFKA_TOPIC_REPLICAS:3}
-    # Producer topics
-    user-registered: ${KAFKA_TOPIC_USER_REGISTERED:fd.user.registered.v1}
-
+security:
+  jwt:
+    jwks-uri: ${JWT_JWKS_URI:http://localhost:8082/.well-known/jwks.json}
 
 logging:
   level:
