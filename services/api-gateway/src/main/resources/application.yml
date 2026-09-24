@@ -90,6 +90,11 @@ spring:
         jwt:
           jwk-set-uri: ${GATEWAY_JWT_JWKS_URI:http://localhost:8082/.well-known/jwks.json}
 
+gateway:
+  rate-limit:
+    max-requests: ${RATE_LIMIT_MAX_REQUESTS:100}
+    window: ${RATE_LIMIT_WINDOW:PT1M}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
