@@ -5,6 +5,7 @@ import com.food.delivery.common.dlt.DltEventService;
 import fd.delivery.DeliveryRequestedV1;
 import fd.order.OrderCancelledV1;
 import fd.restaurant.OrderReadyForPickupV1;
+import fd.user.UserRegisteredV1;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.DltHandler;
@@ -38,6 +39,12 @@ public class DeliveryListener {
     @KafkaListener(topics = "${kafka.topics.order-ready}", groupId = "${kafka.consumer.group-id}")
     public void onOrderReadyForPickup(OrderReadyForPickupV1 event) {
         deliveryService.markReadyForPickup(event.getOrderId());
+    }
+
+    @StandardRetryableTopic
+    @KafkaListener(topics = "${kafka.topics.user-registered}", groupId = "${kafka.consumer.group-id}")
+    public void onUserRegistered(UserRegisteredV1 event) {
+        assignmentService.createCourierIfApplicable(event);
     }
 
     @DltHandler

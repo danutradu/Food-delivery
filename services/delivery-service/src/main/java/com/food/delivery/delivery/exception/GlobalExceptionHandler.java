@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler({AssignmentNotFoundException.class, DeliveryNotFoundException.class})
+    @ExceptionHandler({AssignmentNotFoundException.class, DeliveryNotFoundException.class, CourierNotFoundException.class})
     public ResponseEntity<ProblemDetail> handleResourceNotFoundException(RuntimeException e) {
         log.warn(e.getMessage());
         return problem(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", e.getMessage());

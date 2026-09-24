@@ -14,8 +14,10 @@ class GlobalExceptionHandlerTest {
     @Test
     void resourceSpecificNotFoundExceptionsReturnNotFound() {
         var deliveryResponse = handler.handleResourceNotFoundException(new DeliveryNotFoundException(UUID.randomUUID()));
+        var courierResponse = handler.handleResourceNotFoundException(new CourierNotFoundException(UUID.randomUUID()));
 
         assertThat(deliveryResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(courierResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
