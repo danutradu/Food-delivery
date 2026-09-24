@@ -120,6 +120,24 @@ class FoodDeliveryIntegrationTests {
     }
 
     @Test
+    void customerCanApplyAndBeApprovedAsCourier() throws Exception {
+        var applicant = client.registerUniqueCustomerCredentials();
+        var adminToken = client.login("admin", "admin123");
+
+        var application = client.request("POST", "/courier-applications", applicant.token(),
+                "{\"fullName\":\"Integration Courier\",\"phoneNumber\":\"+40123456789\",\"vehicleInformation\":\"Bicycle\",\"operatingArea\":\"Bucharest\"}");
+        client.assertStatus(application, 201);
+        var applicationId = client.json(application).get("id").asText();
+
+        client.assertStatus(client.request("POST", "/courier-applications/" + applicationId + "/approve",
+                adminToken, null), 200);
+
+        var courierToken = client.login(applicant.username(), applicant.password());
+        client.await("courier profile provisioning", "/assignments?active=true", courierToken,
+                body -> body.isArray());
+    }
+
+    @Test
     void paymentFailureMarksOrderAsFailed() throws Exception {
         var checkout = client.createOrder(8);
         var order = client.awaitOrderStatus(checkout, "PAYMENT_FAILED");

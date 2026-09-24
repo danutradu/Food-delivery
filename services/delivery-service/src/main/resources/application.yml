@@ -75,7 +75,8 @@ kafka:
     delivery-requested: ${KAFKA_TOPIC_DELIVERY_REQUESTED:fd.delivery.requested.v1}
     order-cancelled: ${KAFKA_TOPIC_ORDER_CANCELLED:fd.order.cancelled.v1}
     order-ready: ${KAFKA_TOPIC_ORDER_READY:fd.restaurant.order-ready.v1}
-    user-registered: ${KAFKA_TOPIC_USER_REGISTERED:fd.user.registered.v1}
+    courier-role-granted: ${KAFKA_TOPIC_COURIER_ROLE_GRANTED:fd.user.courier-role-granted.v1}
+    courier-role-revoked: ${KAFKA_TOPIC_COURIER_ROLE_REVOKED:fd.user.courier-role-revoked.v1}
     # Producer topics
     courier-assigned: ${KAFKA_TOPIC_COURIER_ASSIGNED:fd.delivery.courier-assigned.v1}
     order-picked-up: ${KAFKA_TOPIC_ORDER_PICKED_UP:fd.delivery.picked-up.v1}

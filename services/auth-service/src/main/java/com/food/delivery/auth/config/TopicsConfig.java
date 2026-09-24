@@ -23,4 +23,14 @@ public class TopicsConfig {
     public NewTopic userRegistered() {
         return TopicBuilder.name(topics.getUserRegistered()).partitions(partitions).replicas(replicas).build();
     }
+
+    @Bean
+    public NewTopic courierRoleGranted() {
+        return TopicBuilder.name(topics.getCourierRoleGranted()).partitions(partitions).replicas(replicas).build();
+    }
+
+    @Bean
+    public NewTopic courierRoleRevoked() {
+        return TopicBuilder.name(topics.getCourierRoleRevoked()).partitions(partitions).replicas(replicas).build();
+    }
 }

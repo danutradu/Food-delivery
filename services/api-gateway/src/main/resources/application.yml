@@ -63,7 +63,7 @@ spring:
             - id: auth-service
               uri: ${AUTH_SERVICE_URI:http://localhost:8082}
               predicates:
-                - Path=/auth/**
+                - Path=/auth/**,/courier-applications/**,/couriers/**
             - id: order-service
               uri: ${ORDER_SERVICE_URI:http://localhost:8083}
               predicates:

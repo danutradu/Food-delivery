@@ -8,6 +8,12 @@ import org.springframework.stereotype.Component;
 @Getter
 public class KafkaTopics {
 
+    @Value("${kafka.topics.courier-role-granted}")
+    private String courierRoleGranted;
+
+    @Value("${kafka.topics.courier-role-revoked}")
+    private String courierRoleRevoked;
+
     @Value("${kafka.topics.courier-assigned}")
     private String courierAssigned;
 

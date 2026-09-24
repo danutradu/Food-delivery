@@ -1,6 +1,7 @@
 package com.food.delivery.auth.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleUserAlreadyExistsException(UserAlreadyExistsException e) {
         log.warn(e.getMessage());
         return problem(HttpStatus.BAD_REQUEST, "USER_ALREADY_EXISTS", e.getMessage());
+    }
+
+    @ExceptionHandler(CourierApplicationException.class)
+    public ResponseEntity<ProblemDetail> handleCourierApplicationException(CourierApplicationException e) {
+        log.warn(e.getMessage());
+        var status = e instanceof CourierApplicationNotFoundException ? HttpStatus.NOT_FOUND
+                : e instanceof CourierApplicationConflictException ? HttpStatus.CONFLICT
+                : HttpStatus.BAD_REQUEST;
+        var code = status == HttpStatus.NOT_FOUND ? "COURIER_APPLICATION_NOT_FOUND"
+                : status == HttpStatus.CONFLICT ? "COURIER_APPLICATION_CONFLICT"
+                : "COURIER_APPLICATION_INVALID";
+        return problem(status, code, e.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ProblemDetail> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        log.warn("Data integrity violation", e);
+        return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_CONFLICT", "The requested state conflicts with existing data");
     }
 
     @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class})

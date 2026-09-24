@@ -143,6 +143,24 @@ class AssignmentServiceTest {
     }
 
     @Test
+    void suspendedCourierCanCompleteCurrentDeliveryAndRemainsSuspended() {
+        assignment.setStatus(AssignmentStatus.ACCEPTED);
+        delivery.setStatus(DeliveryStatus.PICKED_UP);
+        courier.setStatus(CourierStatus.SUSPENDED);
+        when(courierRepository.findByUserId(courier.getUserId())).thenReturn(Optional.of(courier));
+        when(courierRepository.findById(courier.getId())).thenReturn(Optional.of(courier));
+        when(deliveryRepository.findFirstByStatusOrderByCreatedAtAsc(DeliveryStatus.PENDING_ASSIGNMENT))
+                .thenReturn(Optional.empty());
+        when(topics.getOrderDelivered()).thenReturn("delivered");
+
+        assignmentService.markAsDelivered(assignment.getId(), courier.getUserId());
+
+        assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.DELIVERED);
+        assertThat(assignment.getStatus()).isEqualTo(AssignmentStatus.COMPLETED);
+        assertThat(courier.getStatus()).isEqualTo(CourierStatus.SUSPENDED);
+    }
+
+    @Test
     void expireOffers_expiresAttemptAndOffersAnotherCourier() {
         assignment.setExpiresAt(Instant.now().minusSeconds(1));
         var nextCourier = new CourierEntity();

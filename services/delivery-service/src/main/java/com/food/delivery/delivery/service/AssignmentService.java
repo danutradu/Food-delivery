@@ -1,6 +1,5 @@
 package com.food.delivery.delivery.service;
 
-import com.food.delivery.common.model.Role;
 import com.food.delivery.common.outbox.OutboxService;
 import com.food.delivery.delivery.config.KafkaTopics;
 import com.food.delivery.delivery.dto.AssignmentResponse;
@@ -13,7 +12,6 @@ import com.food.delivery.delivery.repository.CourierAssignmentRepository;
 import com.food.delivery.delivery.repository.CourierRepository;
 import com.food.delivery.delivery.repository.DeliveryRepository;
 import com.food.delivery.delivery.util.DeliveryFactory;
-import fd.user.UserRegisteredV1;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
@@ -192,18 +190,6 @@ public class AssignmentService {
         });
     }
 
-    @Transactional
-    public void createCourierIfApplicable(UserRegisteredV1 event) {
-        if (!event.getRoles().contains(Role.COURIER.name()) || courierRepository.findByUserId(event.getUserId()).isPresent()) {
-            return;
-        }
-        var courier = new CourierEntity();
-        courier.setUserId(event.getUserId());
-        courier.setStatus(CourierStatus.AVAILABLE);
-        courierRepository.save(courier);
-        dispatchOldestPendingDelivery();
-    }
-
     @Scheduled(fixedDelayString = "${delivery.assignment.expiry-check-ms:5000}")
     @Transactional
     public void expireOffers() {
@@ -240,8 +226,10 @@ public class AssignmentService {
 
     private void releaseCourierState(UUID courierId) {
         courierRepository.findById(courierId).ifPresent(courier -> {
-            courier.setStatus(CourierStatus.AVAILABLE);
-            courierRepository.save(courier);
+            if (courier.getStatus() != CourierStatus.SUSPENDED) {
+                courier.setStatus(CourierStatus.AVAILABLE);
+                courierRepository.save(courier);
+            }
         });
     }
 
@@ -278,6 +266,9 @@ public class AssignmentService {
                 .orElseThrow(() -> new AssignmentNotFoundException(assignment.getId()));
         if (!courier.getId().equals(assignment.getCourierId())) {
             throw new AssignmentNotFoundException(assignment.getId());
+        }
+        if (courier.getStatus() == CourierStatus.SUSPENDED && assignment.getStatus() == AssignmentStatus.OFFERED) {
+            throw new AssignmentStateConflictException("Courier is suspended and cannot accept this offer");
         }
     }
 

@@ -21,6 +21,12 @@ public class CourierEntity {
 
     private String vehicle;
 
+    @Column(length = 150)
+    private String operatingArea;
+
+    @Column(name = "role_version", nullable = false)
+    private long roleVersion = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CourierStatus status = CourierStatus.AVAILABLE;

@@ -20,6 +20,16 @@ public class TopicsConfig {
     private int replicas;
 
     @Bean
+    public NewTopic courierRoleGranted() {
+        return TopicBuilder.name(topics.getCourierRoleGranted()).partitions(partitions).replicas(replicas).build();
+    }
+
+    @Bean
+    public NewTopic courierRoleRevoked() {
+        return TopicBuilder.name(topics.getCourierRoleRevoked()).partitions(partitions).replicas(replicas).build();
+    }
+
+    @Bean
     public NewTopic courierAssigned() {
         return TopicBuilder.name(topics.getCourierAssigned()).partitions(partitions).replicas(replicas).build();
     }

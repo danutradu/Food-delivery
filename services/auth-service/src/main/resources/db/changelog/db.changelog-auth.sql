@@ -33,3 +33,24 @@ WHERE (u.username = 'admin' AND r.name = 'ADMIN')
    OR (u.username IN ('owner1','owner2') AND r.name = 'RESTAURANT_OWNER')
    OR (u.username IN ('courier1','courier2') AND r.name = 'COURIER')
    OR (u.username = 'customer1' AND r.name = 'CUSTOMER');
+
+--changeset food-delivery:auth-003
+ALTER TABLE users ADD COLUMN courier_role_version BIGINT NOT NULL DEFAULT 0;
+CREATE TABLE courier_applications (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id),
+    full_name VARCHAR(150) NOT NULL,
+    phone_number VARCHAR(50) NOT NULL,
+    vehicle_information VARCHAR(100) NOT NULL,
+    operating_area VARCHAR(150) NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    submitted_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    reviewed_at TIMESTAMP WITH TIME ZONE,
+    reviewed_by UUID REFERENCES users(id),
+    rejection_reason VARCHAR(500)
+);
+CREATE INDEX idx_courier_applications_status_submitted_at
+    ON courier_applications(status, submitted_at);
+CREATE UNIQUE INDEX uq_courier_applications_active_user
+    ON courier_applications(user_id)
+    WHERE status IN ('PENDING', 'APPROVED', 'PERMANENTLY_REJECTED');

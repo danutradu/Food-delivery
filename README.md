@@ -63,6 +63,8 @@ food-delivery/
 | Topic | Producer | Consumers |
 |---|---|---|
 | `fd.user.registered.v1` | auth-service | user-service |
+| `fd.user.courier-role-granted.v1` | auth-service | delivery-service |
+| `fd.user.courier-role-revoked.v1` | auth-service | delivery-service |
 | `fd.catalog.menu-item-created.v1` | catalog-service | cart-service |
 | `fd.catalog.menu-item-updated.v1` | catalog-service | cart-service |
 | `fd.catalog.menu-item-deleted.v1` | catalog-service | cart-service |
@@ -229,7 +231,36 @@ ADMIN_TOKEN="<JWT from above>"
 
 `POST /auth/register` creates customers. Use the seeded owner, courier, and admin accounts for privileged workflows.
 
-### 2. Browse restaurants and menu (catalog-service)
+### 2. Apply for courier access and manage courier roles
+
+A customer can submit one active courier application. Admins can review pending applications, approve or reject them, and disable or re-enable an approved courier.
+
+```bash
+curl -X POST http://localhost:8080/courier-applications \
+  -H "Authorization: Bearer $CUSTOMER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"fullName":"Jane Doe","phoneNumber":"+40123456789","vehicleInformation":"Bicycle","operatingArea":"Bucharest"}'
+
+APPLICATION_ID="<application id from above>"
+
+curl "http://localhost:8080/courier-applications?status=PENDING" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+curl -X POST "http://localhost:8080/courier-applications/$APPLICATION_ID/approve" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+curl -X POST "http://localhost:8080/couriers/<USER_ID>/disable" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"reason":"Policy violation"}'
+
+curl -X POST "http://localhost:8080/couriers/<USER_ID>/enable" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+After approval, disabling, or re-enabling a courier, log in again to obtain a JWT containing the updated roles. Delivery-service provisioning is asynchronous.
+
+### 3. Browse restaurants and menu (catalog-service)
 ```bash
 # Public catalog endpoints; no token is required
 curl http://localhost:8080/restaurants
@@ -238,7 +269,7 @@ RESTAURANT_ID="550e8400-e29b-41d4-a716-446655440001"  # Pizza Palace
 curl http://localhost:8080/restaurants/$RESTAURANT_ID/menu
 ```
 
-### 3. Add items to cart and checkout (cart-service)
+### 4. Add items to cart and checkout (cart-service)
 ```bash
 MENU_ITEM_ID="550e8400-e29b-41d4-a716-446655440101"  # Margherita Pizza
 
@@ -261,7 +292,7 @@ curl -X POST http://localhost:8080/cart/checkout \
 # Retrying with the same cartId returns the same checkout response.
 ```
 
-### 4. Track the order (order-service)
+### 5. Track the order (order-service)
 ```bash
 # Get your orders
 curl http://localhost:8080/orders \
@@ -286,7 +317,7 @@ CartCheckedOut → OrderCreated + PaymentRequested
 → CourierPickup → OrderPickedUp → CourierDeliver → OrderDelivered
 ```
 
-### 5. Process the order in the kitchen (restaurant-ops-service)
+### 6. Process the order in the kitchen (restaurant-ops-service)
 ```bash
 curl -X PATCH http://localhost:8080/ops/orders/$ORDER_ID/status \
   -H "Authorization: Bearer $OWNER_TOKEN" \
@@ -304,7 +335,7 @@ curl -X PATCH http://localhost:8080/ops/orders/$ORDER_ID/status \
   -d '{"status":"READY"}'
 ```
 
-### 6. Accept, pick up, and deliver (delivery-service)
+### 7. Accept, pick up, and deliver (delivery-service)
 
 When a `DeliveryRequestedV1` event arrives, delivery-service creates one delivery and offers it to an available courier. The courier must accept before pickup. Rejected or expired offers remain in assignment history and dispatch continues with another courier.
 
@@ -327,7 +358,7 @@ curl -X POST http://localhost:8080/assignments/$ASSIGNMENT_ID/deliver \
   -H "Authorization: Bearer $COURIER_TOKEN"
 ```
 
-### 7. Alternatively, cancel before delivery completes
+### 8. Alternatively, cancel before delivery completes
 
 Run this instead of completing the delivery workflow above; delivered orders cannot be cancelled.
 
@@ -381,7 +412,7 @@ The system-test module uses Testcontainers to start and clean up the existing
 Docker Compose stack automatically. Docker Compose remains available for local
 development and manual service inspection.
 
-The 8 scenarios cover successful checkout and delivery, payment failure, restaurant rejection, cancellation after payment authorization, late cancellation with fee charging, rejected-offer reassignment history, expired-offer reassignment, and checkout idempotency with customer order isolation.
+The 9 scenarios cover successful checkout and delivery, customer courier application and approval, payment failure, restaurant rejection, cancellation after payment authorization, late cancellation with fee charging, rejected-offer reassignment history, expired-offer reassignment, and checkout idempotency with customer order isolation.
 
 ## Observability
 

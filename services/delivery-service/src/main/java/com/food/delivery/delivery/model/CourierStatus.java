@@ -4,5 +4,6 @@ public enum CourierStatus {
     AVAILABLE,
     OFFERED,
     ON_DELIVERY,
-    OFFLINE
+    OFFLINE,
+    SUSPENDED
 }

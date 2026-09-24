@@ -13,3 +13,7 @@ CREATE UNIQUE INDEX idx_courier_assignments_active_courier ON courier_assignment
 
 --changeset food-delivery:delivery-002
 INSERT INTO couriers (id,user_id,vehicle,status) VALUES ('550e8400-e29b-41d4-a716-446655440020','550e8400-e29b-41d4-a716-446655440020','bicycle','AVAILABLE'), ('550e8400-e29b-41d4-a716-446655440022','550e8400-e29b-41d4-a716-446655440022','scooter','AVAILABLE');
+
+--changeset food-delivery:delivery-003
+ALTER TABLE couriers ADD COLUMN operating_area VARCHAR(150);
+ALTER TABLE couriers ADD COLUMN role_version BIGINT NOT NULL DEFAULT 0;

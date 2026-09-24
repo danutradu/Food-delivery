@@ -5,7 +5,8 @@ import com.food.delivery.common.dlt.DltEventService;
 import fd.delivery.DeliveryRequestedV1;
 import fd.order.OrderCancelledV1;
 import fd.restaurant.OrderReadyForPickupV1;
-import fd.user.UserRegisteredV1;
+import fd.user.CourierRoleGrantedV1;
+import fd.user.CourierRoleRevokedV1;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.DltHandler;
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Component;
 public class DeliveryListener {
 
     private final DeliveryService deliveryService;
-    private final AssignmentService assignmentService;
+    private final CourierLifecycleService courierLifecycleService;
     private final DltEventService dltEventService;
 
     @StandardRetryableTopic
@@ -42,9 +43,15 @@ public class DeliveryListener {
     }
 
     @StandardRetryableTopic
-    @KafkaListener(topics = "${kafka.topics.user-registered}", groupId = "${kafka.consumer.group-id}")
-    public void onUserRegistered(UserRegisteredV1 event) {
-        assignmentService.createCourierIfApplicable(event);
+    @KafkaListener(topics = "${kafka.topics.courier-role-granted}", groupId = "${kafka.consumer.group-id}")
+    public void onCourierRoleGranted(CourierRoleGrantedV1 event) {
+        courierLifecycleService.grantCourierRole(event);
+    }
+
+    @StandardRetryableTopic
+    @KafkaListener(topics = "${kafka.topics.courier-role-revoked}", groupId = "${kafka.consumer.group-id}")
+    public void onCourierRoleRevoked(CourierRoleRevokedV1 event) {
+        courierLifecycleService.revokeCourierRole(event);
     }
 
     @DltHandler

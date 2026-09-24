@@ -29,6 +29,9 @@ public class UserEntity {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "courier_role_version", nullable = false)
+    private long courierRoleVersion = 0;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),

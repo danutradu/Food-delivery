@@ -74,6 +74,10 @@ jwt:
   audience: ${JWT_AUDIENCE:food-delivery}
   expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
 
+security:
+  jwt:
+    jwks-uri: ${JWT_JWKS_URI:http://localhost:8082/.well-known/jwks.json}
+
 #Kafka configuration
 kafka:
   topics:
@@ -82,6 +86,8 @@ kafka:
     replicas: ${KAFKA_TOPIC_REPLICAS:3}
     # Producer topics
     user-registered: ${KAFKA_TOPIC_USER_REGISTERED:fd.user.registered.v1}
+    courier-role-granted: ${KAFKA_TOPIC_COURIER_ROLE_GRANTED:fd.user.courier-role-granted.v1}
+    courier-role-revoked: ${KAFKA_TOPIC_COURIER_ROLE_REVOKED:fd.user.courier-role-revoked.v1}
 
 
 logging:

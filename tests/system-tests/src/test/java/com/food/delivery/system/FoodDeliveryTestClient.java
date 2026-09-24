@@ -142,11 +142,15 @@ class FoodDeliveryTestClient implements AutoCloseable {
     }
 
     String registerUniqueCustomer() throws Exception {
+        return registerUniqueCustomerCredentials().token();
+    }
+
+    RegisteredCustomer registerUniqueCustomerCredentials() throws Exception {
         var username = "integration_" + UUID.randomUUID().toString().replace("-", "");
         var response = request("POST", "/auth/register", null,
                 "{\"username\":\"" + username + "\",\"email\":\"" + username + "@example.com\",\"password\":\"p@ssw0rd\"}");
         assertStatus(response, 200);
-        return json(response).get("accessToken").asText();
+        return new RegisteredCustomer(username, "p@ssw0rd", json(response).get("accessToken").asText());
     }
 
     HttpResponse<String> request(String method, String path, String token, String body) throws Exception {
@@ -170,4 +174,6 @@ class FoodDeliveryTestClient implements AutoCloseable {
 
     record Checkout(String customerToken, String cartId, String orderId, String checkoutBody) {
     }
+
+    record RegisteredCustomer(String username, String password, String token) {}
 }
