@@ -87,3 +87,100 @@ databaseChangeLog:
                   name: claimed_at
               - column:
                   name: created_at
+
+  - changeSet:
+      id: common-002-create-dlt-events
+      author: food-delivery
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - not:
+            tableExists:
+              tableName: dlt_events
+      changes:
+        - createTable:
+            tableName: dlt_events
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: service_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_topic
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dlt_topic
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: original_key
+                  type: VARCHAR(255)
+              - column:
+                  name: original_partition
+                  type: INTEGER
+              - column:
+                  name: original_offset
+                  type: BIGINT
+              - column:
+                  name: event_type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload_bytes
+                  type: BYTEA
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload_encoding
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema_full_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parked_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: common-003-create-dlt-event-indexes
+      author: food-delivery
+      changes:
+        - createIndex:
+            tableName: dlt_events
+            indexName: idx_dlt_events_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: dlt_events
+            indexName: idx_dlt_events_service_name
+            columns:
+              - column:
+                  name: service_name
+        - createIndex:
+            tableName: dlt_events
+            indexName: idx_dlt_events_source_topic
+            columns:
+              - column:
+                  name: source_topic
