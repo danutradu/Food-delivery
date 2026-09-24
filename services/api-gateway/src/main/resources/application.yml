@@ -1,0 +1,119 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4200}
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+                allow-credentials: ${CORS_ALLOW_CREDENTIALS:false}
+                max-age: 3600
+          routes:
+            - id: auth-openapi
+              uri: ${AUTH_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/openapi/auth
+              filters:
+                - RewritePath=/openapi/auth, /v3/api-docs
+            - id: catalog-openapi
+              uri: ${CATALOG_SERVICE_URI:http://localhost:8085}
+              predicates:
+                - Path=/openapi/catalog
+              filters:
+                - RewritePath=/openapi/catalog, /v3/api-docs
+            - id: cart-openapi
+              uri: ${CART_SERVICE_URI:http://localhost:8086}
+              predicates:
+                - Path=/openapi/cart
+              filters:
+                - RewritePath=/openapi/cart, /v3/api-docs
+            - id: order-openapi
+              uri: ${ORDER_SERVICE_URI:http://localhost:8083}
+              predicates:
+                - Path=/openapi/order
+              filters:
+                - RewritePath=/openapi/order, /v3/api-docs
+            - id: ops-openapi
+              uri: ${OPS_SERVICE_URI:http://localhost:8087}
+              predicates:
+                - Path=/openapi/ops
+              filters:
+                - RewritePath=/openapi/ops, /v3/api-docs
+            - id: delivery-openapi
+              uri: ${DELIVERY_SERVICE_URI:http://localhost:8088}
+              predicates:
+                - Path=/openapi/delivery
+              filters:
+                - RewritePath=/openapi/delivery, /v3/api-docs
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/auth/**
+            - id: order-service
+              uri: ${ORDER_SERVICE_URI:http://localhost:8083}
+              predicates:
+                - Path=/orders/**,/admin/orders/**
+            - id: catalog-service
+              uri: ${CATALOG_SERVICE_URI:http://localhost:8085}
+              predicates:
+                - Path=/restaurants/**
+            - id: cart-service
+              uri: ${CART_SERVICE_URI:http://localhost:8086}
+              predicates:
+                - Path=/cart/**
+            - id: delivery-service
+              uri: ${DELIVERY_SERVICE_URI:http://localhost:8088}
+              predicates:
+                - Path=/assignments,/assignments/**
+            - id: restaurant-ops-service
+              uri: ${OPS_SERVICE_URI:http://localhost:8087}
+              predicates:
+                - Path=/ops/**
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${GATEWAY_JWT_JWKS_URI:http://localhost:8082/.well-known/jwks.json}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls-primary-name: catalog-service
+    urls:
+      - name: auth-service
+        url: /openapi/auth
+      - name: catalog-service
+        url: /openapi/catalog
+      - name: cart-service
+        url: /openapi/cart
+      - name: order-service
+        url: /openapi/order
+      - name: restaurant-ops-service
+        url: /openapi/ops
+      - name: delivery-service
+        url: /openapi/delivery
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
