@@ -198,6 +198,7 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SCHEMA_REGISTRY_URL=http://schema-registry:8081
       - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_PARTITIONS=1
       - KAFKA_TOPIC_REPLICAS=1
       - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
       - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
@@ -237,6 +238,7 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SCHEMA_REGISTRY_URL=http://schema-registry:8081
       - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_PARTITIONS=1
       - KAFKA_TOPIC_REPLICAS=1
       - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
       - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json

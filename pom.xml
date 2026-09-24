@@ -17,6 +17,7 @@
         <avro.version>1.12.2</avro.version>
         <lombok.version>1.18.48</lombok.version>
         <springdoc.version>2.8.17</springdoc.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -35,6 +36,7 @@
         <module>services/delivery-service</module>
         <module>services/notification-service</module>
         <module>services/api-gateway</module>
+        <module>tests/system-tests</module>
     </modules>
 
     <repositories>
