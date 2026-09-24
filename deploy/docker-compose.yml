@@ -1,0 +1,438 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: apache/kafka:3.7.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      # Dual listeners: PLAINTEXT for containers, PLAINTEXT_HOST for host apps
+      KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Single-broker local defaults; production should use 3/3/2 respectively.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports:
+      - "9092:9092"   # internal (containers)
+      - "9094:9094"   # external (host)
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.7.11
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka:9092
+      - SCHEMA_REGISTRY_HOST_NAME=schema-registry
+      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8081/subjects > /dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.3.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_BROKERCONNECT=kafka:9092
+      - SERVER_PORT=9000
+    ports:
+      - "9000:9000"
+
+  auth-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/auth-service/target/auth-service-0.1.0-SNAPSHOT.jar
+        PORT: 8082
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8082/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_REPLICAS=1
+      - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
+      - JWT_ISSUER=auth-service
+      - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    restart: unless-stopped
+
+  user-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/user-service/target/user-service-0.1.0-SNAPSHOT.jar
+        PORT: 8090
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8090/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/users_profile
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_REPLICAS=1
+      - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
+      - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  catalog-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/catalog-service/target/catalog-service-0.1.0-SNAPSHOT.jar
+        PORT: 8085
+    ports:
+      - "8085:8085"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8085/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/catalog
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_REPLICAS=1
+      - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
+      - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cart-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/cart-service/target/cart-service-0.1.0-SNAPSHOT.jar
+        PORT: 8086
+    ports:
+      - "8086:8086"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8086/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/cart
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_REPLICAS=1
+      - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
+      - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+      - CATALOG_SERVICE_URL=http://catalog-service:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/order-service/target/order-service-0.1.0-SNAPSHOT.jar
+        PORT: 8083
+    ports:
+      - "8083:8083"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8083/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/orders
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_REPLICAS=1
+      - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
+      - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/payment-service/target/payment-service-0.1.0-SNAPSHOT.jar
+        PORT: 8084
+    ports:
+      - "8084:8084"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8084/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/payments
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_REPLICAS=1
+      - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
+      - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  restaurant-ops-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/restaurant-ops-service/target/restaurant-ops-service-0.1.0-SNAPSHOT.jar
+        PORT: 8087
+    ports:
+      - "8087:8087"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8087/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/restaurant_ops
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_REPLICAS=1
+      - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
+      - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  delivery-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/delivery-service/target/delivery-service-0.1.0-SNAPSHOT.jar
+        PORT: 8088
+    ports:
+      - "8088:8088"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8088/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/delivery
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_REPLICAS=1
+      - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
+      - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/notification-service/target/notification-service-0.1.0-SNAPSHOT.jar
+        PORT: 8089
+    ports:
+      - "8089:8089"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8089/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_LISTENER_CONCURRENCY=1
+      - KAFKA_TOPIC_REPLICAS=1
+      - KAFKA_LISTENER_MISSING_TOPICS_FATAL=false
+      - JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: services/api-gateway/target/api-gateway-0.1.0-SNAPSHOT.jar
+        PORT: 8080
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      - PORT=8080
+      - AUTH_SERVICE_URI=http://auth-service:8082
+      - ORDER_SERVICE_URI=http://order-service:8083
+      - CATALOG_SERVICE_URI=http://catalog-service:8085
+      - CART_SERVICE_URI=http://cart-service:8086
+      - OPS_SERVICE_URI=http://restaurant-ops-service:8087
+      - DELIVERY_SERVICE_URI=http://delivery-service:8088
+      - GATEWAY_JWT_JWKS_URI=http://auth-service:8082/.well-known/jwks.json
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:4200
+      - CORS_ALLOW_CREDENTIALS=false
+      - RATE_LIMIT_MAX_REQUESTS=1000
+      - RATE_LIMIT_WINDOW=PT1M
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      restaurant-ops-service:
+        condition: service_healthy
+      delivery-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  default:
+    name: food-delivery

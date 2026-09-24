@@ -1,0 +1,13 @@
+# Git and IDE
+.git
+.idea
+*.iml
+
+# Maven build output (will be rebuilt inside the image)
+target
+*/target
+
+# Local deployment/runtime artifacts
+deploy/postgres-init
+deploy/docker-compose.yml
+*.md

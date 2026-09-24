@@ -1,0 +1,9 @@
+CREATE DATABASE auth;
+CREATE DATABASE orders;
+CREATE DATABASE payments;
+CREATE DATABASE catalog;
+CREATE DATABASE cart;
+CREATE DATABASE restaurant_ops;
+CREATE DATABASE delivery;
+CREATE DATABASE users_profile;
+CREATE DATABASE notification;
