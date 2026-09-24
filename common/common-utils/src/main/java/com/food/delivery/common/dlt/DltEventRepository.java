@@ -24,4 +24,6 @@ public interface DltEventRepository extends JpaRepository<DltEventEntity, UUID> 
             """)
     Page<DltEventEntity> findAllByFilters(DltEventStatus status, String serviceName,
                                           String sourceTopic, Pageable pageable);
+
+    long countByStatus(DltEventStatus status);
 }

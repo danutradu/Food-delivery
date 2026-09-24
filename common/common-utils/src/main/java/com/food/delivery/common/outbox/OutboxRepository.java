@@ -27,4 +27,6 @@ public interface OutboxRepository extends JpaRepository<OutboxEventEntity, UUID>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<OutboxEventEntity> findByIdAndStatus(UUID id, OutboxStatus status);
+
+    long countByStatus(OutboxStatus status);
 }

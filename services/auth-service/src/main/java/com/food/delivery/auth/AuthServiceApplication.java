@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
-@ComponentScan(basePackages = {"com.food.delivery.auth", "com.food.delivery.common.outbox", "com.food.delivery.common.config"})
+@ComponentScan(basePackages = {"com.food.delivery.auth", "com.food.delivery.common.outbox", "com.food.delivery.common.config", "com.food.delivery.common.observability"})
 @EnableJpaRepositories(basePackages = {"com.food.delivery.auth", "com.food.delivery.common.outbox"})
 @EntityScan(basePackages = {"com.food.delivery.auth", "com.food.delivery.common.outbox"})
 public class AuthServiceApplication {
