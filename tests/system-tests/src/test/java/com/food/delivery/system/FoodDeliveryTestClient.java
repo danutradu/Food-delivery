@@ -19,8 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FoodDeliveryTestClient implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FoodDeliveryTestClient.class);
-    private static final UUID RESTAURANT_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
-    private static final UUID MENU_ITEM_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440101");
+    static final UUID RESTAURANT_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
+    static final UUID MENU_ITEM_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440101");
 
     private final String gatewayUrl;
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -128,6 +128,10 @@ class FoodDeliveryTestClient implements AutoCloseable {
 
     JsonNode json(HttpResponse<String> response) throws Exception {
         return objectMapper.readTree(response.body());
+    }
+
+    String jsonBody(Object value) throws Exception {
+        return objectMapper.writeValueAsString(value);
     }
 
     void assertStatus(HttpResponse<String> response, int expected) {

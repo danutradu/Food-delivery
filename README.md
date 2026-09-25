@@ -269,7 +269,7 @@ RESTAURANT_ID="550e8400-e29b-41d4-a716-446655440001"  # Pizza Palace
 curl http://localhost:8080/restaurants/$RESTAURANT_ID/menu
 ```
 
-Restaurant owners and administrators can organize menu items into ordered sections. Sections are managed with `POST`, `PUT`, and `DELETE` under `/restaurants/{restaurantId}/menu/sections`, while customers can retrieve them with `GET`. A menu item may reference a section through `sectionId`; sections cannot be deleted while menu items still reference them.
+Restaurant owners and administrators can organize menu items into ordered sections. Sections are managed with authenticated `POST`, `PUT`, and `DELETE` requests under `/restaurants/{restaurantId}/menu/sections`; anyone can retrieve them with `GET`. Restaurant and menu-item reads are also public. A menu item may reference a section through `sectionId`; sections cannot be deleted while menu items still reference them.
 
 ```bash
 curl -X POST "http://localhost:8080/restaurants/$RESTAURANT_ID/menu/sections" \
@@ -440,7 +440,7 @@ The system-test module uses Testcontainers to start and clean up the existing
 Docker Compose stack automatically. Docker Compose remains available for local
 development and manual service inspection.
 
-The 9 scenarios cover successful checkout and delivery, customer courier application and approval, payment failure, restaurant rejection, cancellation after payment authorization, late cancellation with fee charging, rejected-offer reassignment history, expired-offer reassignment, and checkout idempotency with customer order isolation.
+The 11 scenarios cover successful checkout and delivery, customer courier application and approval, courier suspension and restoration, anonymous restaurant and menu reads plus menu-section management, payment failure, restaurant rejection, cancellation after payment authorization, late cancellation with fee charging, rejected-offer reassignment history, expired-offer reassignment, and checkout idempotency with customer order isolation.
 
 ## Observability
 
