@@ -14,10 +14,16 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler({RestaurantNotFoundException.class, MenuItemNotFoundException.class})
+    @ExceptionHandler({RestaurantNotFoundException.class, MenuItemNotFoundException.class, MenuSectionNotFoundException.class})
     public ResponseEntity<ProblemDetail> handleNotFound(RuntimeException e) {
         log.warn(e.getMessage());
         return problem(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", e.getMessage());
+    }
+
+    @ExceptionHandler(MenuSectionConflictException.class)
+    public ResponseEntity<ProblemDetail> handleMenuSectionConflict(MenuSectionConflictException e) {
+        log.warn(e.getMessage());
+        return problem(HttpStatus.CONFLICT, "MENU_SECTION_CONFLICT", e.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

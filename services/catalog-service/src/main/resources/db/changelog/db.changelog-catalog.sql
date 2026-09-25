@@ -20,3 +20,19 @@ INSERT INTO menu_items (id,restaurant_id,name,description,price,available,versio
  ('550e8400-e29b-41d4-a716-446655440102','550e8400-e29b-41d4-a716-446655440001','Pepperoni Pizza','Pepperoni, mozzarella, tomato sauce',14.99,true,0),
  ('550e8400-e29b-41d4-a716-446655440201','550e8400-e29b-41d4-a716-446655440002','Classic Burger','Beef patty, lettuce, tomato, onion',8.99,true,0),
  ('550e8400-e29b-41d4-a716-446655440202','550e8400-e29b-41d4-a716-446655440002','Cheese Fries','Crispy fries with melted cheese',5.99,true,0);
+
+--changeset food-delivery:catalog-003
+CREATE TABLE menu_sections (
+    id UUID PRIMARY KEY,
+    restaurant_id UUID NOT NULL REFERENCES restaurants(id),
+    name VARCHAR(100) NOT NULL,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT uq_menu_sections_restaurant_name UNIQUE (restaurant_id, name),
+    CONSTRAINT uq_menu_sections_id_restaurant UNIQUE (id, restaurant_id)
+);
+CREATE INDEX idx_menu_sections_restaurant_order
+    ON menu_sections(restaurant_id, display_order, name);
+ALTER TABLE menu_items
+    ADD CONSTRAINT fk_menu_items_section_restaurant
+    FOREIGN KEY (section_id, restaurant_id)
+    REFERENCES menu_sections(id, restaurant_id);

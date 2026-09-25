@@ -269,6 +269,34 @@ RESTAURANT_ID="550e8400-e29b-41d4-a716-446655440001"  # Pizza Palace
 curl http://localhost:8080/restaurants/$RESTAURANT_ID/menu
 ```
 
+Restaurant owners and administrators can organize menu items into ordered sections. Sections are managed with `POST`, `PUT`, and `DELETE` under `/restaurants/{restaurantId}/menu/sections`, while customers can retrieve them with `GET`. A menu item may reference a section through `sectionId`; sections cannot be deleted while menu items still reference them.
+
+```bash
+curl -X POST "http://localhost:8080/restaurants/$RESTAURANT_ID/menu/sections" \
+  -H "Authorization: Bearer $OWNER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Pizzas","displayOrder":1}'
+
+SECTION_ID="<section id from above>"
+
+curl "http://localhost:8080/restaurants/$RESTAURANT_ID/menu/sections"
+
+curl -X POST "http://localhost:8080/restaurants/$RESTAURANT_ID/menu/items" \
+  -H "Authorization: Bearer $OWNER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"sectionId\":\"$SECTION_ID\",\"name\":\"Margherita Pizza\",\"description\":\"Fresh mozzarella, tomato sauce, basil\",\"price\":12.99,\"available\":true,\"version\":0}"
+
+curl -X PUT "http://localhost:8080/restaurants/$RESTAURANT_ID/menu/sections/$SECTION_ID" \
+  -H "Authorization: Bearer $OWNER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Signature Pizzas","displayOrder":1}'
+
+# Deletion succeeds only after the section has no menu items referencing it.
+EMPTY_SECTION_ID="<id of an empty section>"
+curl -X DELETE "http://localhost:8080/restaurants/$RESTAURANT_ID/menu/sections/$EMPTY_SECTION_ID" \
+  -H "Authorization: Bearer $OWNER_TOKEN"
+```
+
 ### 4. Add items to cart and checkout (cart-service)
 ```bash
 MENU_ITEM_ID="550e8400-e29b-41d4-a716-446655440101"  # Margherita Pizza

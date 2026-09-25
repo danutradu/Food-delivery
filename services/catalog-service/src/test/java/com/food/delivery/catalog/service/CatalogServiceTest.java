@@ -2,11 +2,16 @@ package com.food.delivery.catalog.service;
 
 import com.food.delivery.catalog.config.KafkaTopics;
 import com.food.delivery.catalog.dto.MenuItemUpsert;
+import com.food.delivery.catalog.dto.MenuSectionUpsert;
 import com.food.delivery.catalog.dto.RestaurantUpsert;
 import com.food.delivery.catalog.exception.MenuItemNotFoundException;
+import com.food.delivery.catalog.exception.MenuSectionConflictException;
 import com.food.delivery.catalog.exception.RestaurantNotFoundException;
 import com.food.delivery.catalog.model.MenuItemEntity;
+import com.food.delivery.catalog.model.MenuSectionEntity;
+import com.food.delivery.catalog.model.RestaurantEntity;
 import com.food.delivery.catalog.repository.MenuItemRepository;
+import com.food.delivery.catalog.repository.MenuSectionRepository;
 import com.food.delivery.catalog.repository.RestaurantRepository;
 import com.food.delivery.common.outbox.OutboxService;
 import org.junit.jupiter.api.Test;
@@ -17,28 +22,40 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
-import com.food.delivery.catalog.model.RestaurantEntity;
-
-import java.util.Optional;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CatalogServiceTest {
 
-    @Mock RestaurantRepository restaurantRepository;
-    @Mock MenuItemRepository menuItemRepository;
-    @Mock OutboxService outboxService;
-    @Mock KafkaTopics topics;
+    @Mock
+    RestaurantRepository restaurantRepository;
 
-    @InjectMocks CatalogService catalogService;
+    @Mock
+    MenuItemRepository menuItemRepository;
+
+    @Mock
+    MenuSectionRepository menuSectionRepository;
+
+    @Mock
+    OutboxService outboxService;
+
+    @Mock
+    KafkaTopics topics;
+
+    @InjectMocks
+    CatalogService catalogService;
 
     // RestaurantUpsert(ownerUserId, name, address, isOpen)
     // MenuItemUpsert(sectionId, name, description, price, available, version)
@@ -90,11 +107,84 @@ class CatalogServiceTest {
         });
         when(topics.getMenuItemCreated()).thenReturn("fd.catalog.menu-item-created.v1");
 
-        var result = catalogService.createMenuItem(restaurantId, req, ownerId);
+        var result = catalogService.createMenuItem(restaurantId, req, ownerId, false);
 
         assertThat(result.name()).isEqualTo("Margherita");
         assertThat(result.restaurantId()).isEqualTo(restaurantId);
         verify(outboxService).publish(anyString(), anyString(), any());
+    }
+
+    @Test
+    void createMenuSection_savesRestaurantSection() {
+        var ownerId = UUID.randomUUID();
+        var restaurantId = UUID.randomUUID();
+        when(restaurantRepository.findById(restaurantId)).thenReturn(Optional.of(stubRestaurant(restaurantId, ownerId)));
+        when(menuSectionRepository.save(any())).thenAnswer(i -> {
+            var saved = (MenuSectionEntity) i.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+
+        var result = catalogService.createMenuSection(restaurantId,
+                new MenuSectionUpsert("Pizzas", 1), ownerId, false);
+
+        assertThat(result.restaurantId()).isEqualTo(restaurantId);
+        assertThat(result.name()).isEqualTo("Pizzas");
+        assertThat(result.displayOrder()).isEqualTo(1);
+    }
+
+    @Test
+    void adminCanCreateMenuSectionForAnotherRestaurant() {
+        var ownerId = UUID.randomUUID();
+        var adminId = UUID.randomUUID();
+        var restaurantId = UUID.randomUUID();
+        when(restaurantRepository.findById(restaurantId)).thenReturn(Optional.of(stubRestaurant(restaurantId, ownerId)));
+        when(menuSectionRepository.save(any())).thenAnswer(i -> {
+            var saved = (MenuSectionEntity) i.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+
+        var result = catalogService.createMenuSection(restaurantId,
+                new MenuSectionUpsert("Drinks", 2), adminId, true);
+
+        assertThat(result.name()).isEqualTo("Drinks");
+        verify(menuSectionRepository).save(any(MenuSectionEntity.class));
+    }
+
+    @Test
+    void createMenuItem_rejectsSectionFromAnotherRestaurant() {
+        var ownerId = UUID.randomUUID();
+        var restaurantId = UUID.randomUUID();
+        var section = new MenuSectionEntity();
+        section.setId(UUID.randomUUID());
+        section.setRestaurantId(UUID.randomUUID());
+        when(restaurantRepository.findById(restaurantId)).thenReturn(Optional.of(stubRestaurant(restaurantId, ownerId)));
+        when(menuSectionRepository.findById(section.getId())).thenReturn(Optional.of(section));
+
+        assertThatThrownBy(() -> catalogService.createMenuItem(restaurantId,
+                new MenuItemUpsert(section.getId(), "Pizza", null, new BigDecimal("12.00"), true, 0), ownerId, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("does not belong to restaurant");
+        verify(menuItemRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteMenuSection_rejectsSectionContainingItems() {
+        var ownerId = UUID.randomUUID();
+        var restaurantId = UUID.randomUUID();
+        var sectionId = UUID.randomUUID();
+        var section = new MenuSectionEntity();
+        section.setId(sectionId);
+        section.setRestaurantId(restaurantId);
+        when(restaurantRepository.findById(restaurantId)).thenReturn(Optional.of(stubRestaurant(restaurantId, ownerId)));
+        when(menuSectionRepository.findById(sectionId)).thenReturn(Optional.of(section));
+        when(menuItemRepository.existsBySectionId(sectionId)).thenReturn(true);
+
+        assertThatThrownBy(() -> catalogService.deleteMenuSection(restaurantId, sectionId, ownerId, false))
+                .isInstanceOf(MenuSectionConflictException.class)
+                .hasMessageContaining("still contains menu items");
+        verify(menuSectionRepository, never()).delete(any());
     }
 
     @Test
@@ -105,7 +195,7 @@ class CatalogServiceTest {
         when(restaurantRepository.findById(restaurantId)).thenReturn(Optional.of(stubRestaurant(restaurantId, ownerId)));
         when(menuItemRepository.findById(itemId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> catalogService.updateMenuItem(restaurantId, itemId, new MenuItemUpsert(null, "x", null, new BigDecimal("1.00"), true, 0), ownerId))
+        assertThatThrownBy(() -> catalogService.updateMenuItem(restaurantId, itemId, new MenuItemUpsert(null, "x", null, new BigDecimal("1.00"), true, 0), ownerId, false))
                 .isInstanceOf(MenuItemNotFoundException.class)
                 .hasMessageContaining(itemId.toString());
     }
@@ -121,7 +211,7 @@ class CatalogServiceTest {
         item.setRestaurantId(UUID.randomUUID()); // different restaurant
         when(menuItemRepository.findById(itemId)).thenReturn(Optional.of(item));
 
-        assertThatThrownBy(() -> catalogService.updateMenuItem(restaurantId, itemId, new MenuItemUpsert(null, "x", null, new BigDecimal("1.00"), true, 0), ownerId))
+        assertThatThrownBy(() -> catalogService.updateMenuItem(restaurantId, itemId, new MenuItemUpsert(null, "x", null, new BigDecimal("1.00"), true, 0), ownerId, false))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -133,7 +223,7 @@ class CatalogServiceTest {
         when(restaurantRepository.findById(restaurantId)).thenReturn(Optional.of(stubRestaurant(restaurantId, ownerId)));
         when(menuItemRepository.findById(itemId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> catalogService.deleteMenuItem(restaurantId, itemId, ownerId))
+        assertThatThrownBy(() -> catalogService.deleteMenuItem(restaurantId, itemId, ownerId, false))
                 .isInstanceOf(MenuItemNotFoundException.class)
                 .hasMessageContaining(itemId.toString());
     }
@@ -154,7 +244,7 @@ class CatalogServiceTest {
         when(menuItemRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(topics.getMenuItemUpdated()).thenReturn("fd.catalog.menu-item-updated.v1");
 
-        var result = catalogService.setMenuItemAvailability(restaurantId, itemId, false, ownerId);
+        var result = catalogService.setMenuItemAvailability(restaurantId, itemId, false, ownerId, false);
 
         assertThat(result.available()).isFalse();
         verify(outboxService).publish(anyString(), anyString(), any());
@@ -166,7 +256,7 @@ class CatalogServiceTest {
         var callerUserId = UUID.randomUUID();
         when(restaurantRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> catalogService.setRestaurantStatus(id, false, callerUserId))
+        assertThatThrownBy(() -> catalogService.setRestaurantStatus(id, false, callerUserId, false))
                 .isInstanceOf(RestaurantNotFoundException.class)
                 .hasMessageContaining(id.toString());
     }
@@ -178,7 +268,7 @@ class CatalogServiceTest {
         var restaurantId = UUID.randomUUID();
         when(restaurantRepository.findById(restaurantId)).thenReturn(Optional.of(stubRestaurant(restaurantId, ownerId)));
 
-        assertThatThrownBy(() -> catalogService.createMenuItem(restaurantId, new MenuItemUpsert(null, "x", null, new BigDecimal("1.00"), true, 0), wrongCaller))
+        assertThatThrownBy(() -> catalogService.createMenuItem(restaurantId, new MenuItemUpsert(null, "x", null, new BigDecimal("1.00"), true, 0), wrongCaller, false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("do not own");
     }
@@ -199,7 +289,7 @@ class CatalogServiceTest {
         when(topics.getMenuItemUpdated()).thenReturn("fd.catalog.menu-item-updated.v1");
 
         var result = catalogService.updateMenuItem(restaurantId, itemId,
-                new MenuItemUpsert(UUID.randomUUID(), "New", "Updated", new BigDecimal("15.00"), false, 0), ownerId);
+                new MenuItemUpsert(null, "New", "Updated", new BigDecimal("15.00"), false, 0), ownerId, false);
 
         assertThat(result.name()).isEqualTo("New");
         assertThat(result.price()).isEqualByComparingTo("15.00");
@@ -219,7 +309,7 @@ class CatalogServiceTest {
         when(menuItemRepository.findById(itemId)).thenReturn(Optional.of(item));
         when(topics.getMenuItemDeleted()).thenReturn("fd.catalog.menu-item-deleted.v1");
 
-        catalogService.deleteMenuItem(restaurantId, itemId, ownerId);
+        catalogService.deleteMenuItem(restaurantId, itemId, ownerId, false);
 
         verify(menuItemRepository).delete(item);
         verify(outboxService).publish(anyString(), eq(itemId.toString()), any());
@@ -234,7 +324,7 @@ class CatalogServiceTest {
         when(restaurantRepository.findById(restaurantId)).thenReturn(Optional.of(restaurant));
         when(restaurantRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        var result = catalogService.setRestaurantStatus(restaurantId, false, ownerId);
+        var result = catalogService.setRestaurantStatus(restaurantId, false, ownerId, false);
 
         assertThat(result.open()).isFalse();
         verify(restaurantRepository).save(restaurant);

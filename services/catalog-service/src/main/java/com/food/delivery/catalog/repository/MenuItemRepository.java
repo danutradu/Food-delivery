@@ -9,4 +9,5 @@ import java.util.UUID;
 
 public interface MenuItemRepository extends JpaRepository<MenuItemEntity, UUID> {
     Page<MenuItemEntity> findByRestaurantId(UUID restaurantId, Pageable pageable);
+    boolean existsBySectionId(UUID sectionId);
 }
